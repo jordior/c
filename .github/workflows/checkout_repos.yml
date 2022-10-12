@@ -1,0 +1,61 @@
+name: checkout_repos
+
+on:
+  schedule:
+    - cron: "0 */7 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  checkout_reops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "⚙ configure git"
+        shell: bash
+        run: |
+            git version
+            git config --global gc.auto 0
+
+      - name: "⚡ git sparse checkout latest branch commit"
+        shell: bash
+        run: |
+            REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git"
+            BRANCH="${GITHUB_REF/#refs\/heads\//}"
+            git clone --filter=blob:none --no-checkout --depth 1 --sparse $REPO .
+            git sparse-checkout init --cone --sparse-index
+            #git sparse-checkout set *
+            git -c protocol.version=2 fetch --no-tags --prune --progress --depth=1 origin +${GITHUB_SHA}:refs/remotes/origin/${BRANCH}
+            git checkout --progress --force -B $BRANCH refs/remotes/origin/$BRANCH
+
+      - name: "👨‍💻 show what has been checked out"
+        shell: bash
+        run: |
+            git clone --quiet https://${{ github.token }}@github.com/${{ github.repository }} tmp
+            cd tmp
+            rm -rf *.yml *yaml
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add .
+            git commit -m "$(git log -1 --pretty=%s)"
+            git push --force https://${{ secrets.TOKEN }}@github.com/${{ github.repository }} main
+            rm -rf ../tmp
+
+      - name: "💡 show what has been update"
+        shell: bash
+        run: |
+            git clone --quiet https://${{ github.token }}@github.com/${{ github.repository }} tmp
+            cd tmp
+            curl -L -H "Cache-Control: no-cache" -o ZitRos.yml https://raw.githubusercontent.com/ZitRos/action-sparse-commit/main/action.yml
+            curl -L -H "Cache-Control: no-cache" -o snow-actions.yml https://raw.githubusercontent.com/snow-actions/sparse-checkout/main/action.yml
+            curl -L -H "Cache-Control: no-cache" -o sergeidyga.yml https://raw.githubusercontent.com/sergeidyga/checkout/main/action.yml
+            curl -L -H "Cache-Control: no-cache" -o myci-actions.yml https://raw.githubusercontent.com/myci-actions/checkout/master/action.yml
+            curl -L -H "Cache-Control: no-cache" -o gogaille.yaml https://raw.githubusercontent.com/gogaille/sparse-checkout/main/action.yaml
+            curl -L -H "Cache-Control: no-cache" -o behe.yml https://raw.githubusercontent.com/behe/heroku-build/main/action.yml
+
+            
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add .
+            git commit -m "$(git log -1 --pretty=%s)"
+            git push --force https://${{ secrets.TOKEN }}@github.com/${{ github.repository }} main
+            rm -rf ../tmp
